@@ -133,3 +133,92 @@ h2{
 @media (max-width:560px){
   section, main > section{margin:14px 10px;padding:16px;}
 }
+
+/* ---------- タイムライン：修正・削除 ---------- */
+.timeline-item .t-head{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.t-actions{display:flex;gap:6px;flex-shrink:0;}
+.t-btn{
+  padding:4px 10px;font-size:.8rem;border:1px solid var(--line);background:#fff;
+  color:var(--ink);border-radius:5px;cursor:pointer;font-family:inherit;
+}
+.t-btn:hover{background:var(--paper-dark);}
+.t-btn-danger{color:var(--accent-dark);border-color:#e0b0a8;}
+.t-btn-danger:hover{background:#fbe9e5;}
+.t-btn:disabled{opacity:.5;cursor:not-allowed;}
+.timeline-item .t-msg{margin:6px 0 0;}
+.timeline-item .t-msg:empty{display:none;}
+
+.timeline-item.editing{background:#fffdf6;border-color:var(--accent);}
+.t-edit-title{margin:0 0 10px;font-weight:bold;font-size:.95rem;color:var(--accent-dark);}
+.t-edit label{display:block;margin-bottom:12px;font-size:.88rem;}
+.t-edit input[type=number],
+.t-edit input[type=date]{
+  width:100%;padding:9px;margin-top:4px;border:1px solid var(--line);border-radius:6px;font-size:1rem;
+}
+.t-edit input[type=file]{margin-top:6px;max-width:100%;}
+.e-current-photo{margin-bottom:12px;}
+.e-current-photo img{width:100%;border-radius:6px;margin:0 0 6px;}
+.t-edit label.e-check{display:flex;align-items:center;gap:6px;margin:0;}
+.t-edit-actions{display:flex;gap:8px;}
+.t-edit-actions .primary-btn{flex:2;margin-top:0;}
+.sub-btn{
+  flex:1;padding:12px;border:1px solid var(--line);background:var(--paper-dark);
+  border-radius:6px;font-size:1rem;cursor:pointer;font-family:inherit;color:var(--ink);
+}
+.sub-btn:hover{background:var(--line);}
+
+/* ---------- 公開設定 ---------- */
+.visibility-field{
+  border:1px solid var(--line);border-radius:6px;padding:8px 12px 4px;margin:0 0 14px;
+}
+.visibility-field legend{font-size:.9rem;padding:0 4px;}
+.post-section .radio-label{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:.88rem;}
+.t-edit select{
+  width:100%;padding:9px;margin-top:4px;border:1px solid var(--line);border-radius:6px;
+  font-size:.95rem;background:#fff;font-family:inherit;
+}
+.vis-badge{
+  display:inline-block;font-size:.7rem;padding:1px 7px;border-radius:10px;margin-left:4px;vertical-align:middle;
+}
+.vis-public{background:#e6efe3;color:var(--green);border:1px solid #bcd0b6;}
+.vis-private{background:#eee9dd;color:#665f4d;border:1px solid var(--line);}
+.vis-mine{background:#fbe9e5;color:var(--accent-dark);border:1px solid #e0b0a8;}
+
+/* ---------- コメント ---------- */
+.c-block{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);}
+.c-head{margin:0 0 6px;font-size:.85rem;color:#665f4d;}
+.c-count{
+  display:inline-block;min-width:1.4em;text-align:center;font-size:.75rem;
+  background:var(--accent);color:#fff;border-radius:10px;padding:0 6px;
+}
+.c-list{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px;}
+.c-empty{font-size:.8rem;color:#8a8163;}
+.c-item{background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 8px;}
+.c-item.c-mine{background:#fff8ee;}
+.c-meta{display:flex;align-items:center;gap:8px;font-size:.75rem;color:#8a8163;}
+.c-name{font-weight:bold;color:var(--ink);}
+.c-del{
+  margin-left:auto;background:none;border:none;color:var(--accent-dark);
+  font-size:.75rem;cursor:pointer;text-decoration:underline;padding:0;font-family:inherit;
+}
+.c-text{margin:2px 0 0;font-size:.88rem;white-space:pre-wrap;word-break:break-word;}
+.c-form{display:flex;gap:6px;align-items:flex-end;}
+.c-input{
+  flex:1;padding:8px;border:1px solid var(--line);border-radius:6px;
+  font-size:.9rem;font-family:inherit;resize:vertical;
+}
+.c-send{
+  padding:8px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;
+  cursor:pointer;font-family:inherit;font-size:.9rem;white-space:nowrap;
+}
+.c-send:disabled{opacity:.6;cursor:not-allowed;}
+.c-msg{margin:4px 0 0;}
+.c-msg:empty{display:none;}
+.c-private-note{font-size:.78rem;color:#8a8163;margin:8px 0 0;}
+
+/* ---------- みんなの旅 ---------- */
+.f-head{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-bottom:2px;}
+.f-name{font-weight:bold;font-size:.95rem;}
+.f-station{margin-left:auto;font-size:.78rem;color:var(--green);}
+.feed-item.feed-mine{border-color:#e0b0a8;}
+.feed-more{display:block;width:100%;margin-top:14px;}

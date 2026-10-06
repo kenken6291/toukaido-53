@@ -1,18 +1,26 @@
 // ============ 設定 ============
-// デプロイ後、GASの「ウェブアプリ」URLに書き換えてください
-const API_URL = 'https://script.google.com/macros/s/AKfycbxJ91FYovJzNgUg9xvPN0Yco_508bxmtQFcR9VE4NsRkklihm2GxbjtwfTlGDmqoySzLw/exec';
+// GASのURLは config.js で設定します（このファイルにはURLを書きません）
+const API_URL = (window.APP_CONFIG && window.APP_CONFIG.API_URL) || '';
+if (!API_URL) {
+  console.error('config.js が読み込めないか、API_URL が未設定です。');
+}
 
 const SESSION_KEY = 'toukaido53_session';
 
 // ============ 共通API呼び出し ============
 // GASへのCORSプリフライトを避けるため text/plain で送信する
 async function callApi(payload) {
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: {'Content-Type': 'text/plain;charset=utf-8'},
-    body: JSON.stringify(payload)
-  });
-  return res.json();
+  if (!API_URL) return {ok:false, error:'config_missing'};
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    return {ok:false, error:'network_error'};
+  }
 }
 
 function getSession() {
@@ -32,7 +40,9 @@ const ERROR_MESSAGES = {
   password_too_short: 'パスワードは8文字以上で設定してください。',
   mail_failed: 'メール送信に失敗しました。時間をおいて再度お試しください。',
   member_not_found: '会員情報が見つかりません。',
-  server_error: 'サーバーエラーが発生しました。時間をおいて再度お試しください。'
+  server_error: 'サーバーエラーが発生しました。時間をおいて再度お試しください。',
+  config_missing: '設定ファイル（config.js）が読み込めません。管理者にお知らせください。',
+  network_error: '通信に失敗しました。電波状況を確認して、もう一度お試しください。'
 };
 function errorMessage(code) { return ERROR_MESSAGES[code] || 'エラーが発生しました。'; }
 

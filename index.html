@@ -89,14 +89,14 @@
 
   <section class="progress-section">
     <h2>道中記</h2>
-    <p class="current-location">現在地 <strong id="currentStation">日本橋</strong> 出発地</p>
+    <p class="current-location">現在地 <strong id="currentStation">日本橋</strong> <span id="currentSuffix">出発地</span></p>
     <p class="next-station">次の宿場「<span id="nextStation">品川</span>」まで あと <strong id="remainingKm">--</strong> km</p>
 
     <div class="progress-bar-wrap">
       <div class="progress-bar-track">
         <div id="progressBarFill" class="progress-bar-fill" style="width:0%"></div>
       </div>
-      <div class="progress-bar-labels"><span>日本橋</span><span>0%</span><span>京・三条大橋</span></div>
+      <div class="progress-bar-labels"><span>日本橋</span><span id="progressPct">0%</span><span>京・三条大橋</span></div>
     </div>
 
     <div class="stats-grid">
@@ -122,6 +122,11 @@
       </label>
       <img id="photoPreview" class="photo-preview" hidden alt="選択した写真のプレビュー">
       <button type="button" id="removePhotoBtn" class="link-btn" hidden>写真を外す</button>
+      <fieldset class="visibility-field">
+        <legend>公開設定</legend>
+        <label class="radio-label"><input type="radio" name="visibility" value="public" checked> 公開（みんなの旅に表示・コメント可）</label>
+        <label class="radio-label"><input type="radio" name="visibility" value="private"> 非公開（自分だけ）</label>
+      </fieldset>
       <button type="submit" class="primary-btn" id="submitRecordBtn">投稿して進む</button>
       <p id="recordMessage" class="form-message"></p>
     </form>
@@ -133,12 +138,21 @@
     <p id="timelineEmpty" class="form-note" hidden>まだ記録がありません。最初の一歩を投稿してみましょう。</p>
   </section>
 
+  <section class="feed-section">
+    <h2>みんなの旅（励ましあい）</h2>
+    <p class="form-note">公開された記録が新しい順に並びます。ひとことコメントで道中を励ましあいましょう。</p>
+    <div id="feedList" class="timeline-list"></div>
+    <p id="feedEmpty" class="form-note" hidden>まだ公開された記録がありません。</p>
+    <button type="button" id="feedMoreBtn" class="sub-btn feed-more" hidden>もっと見る</button>
+  </section>
+
 </main>
 
 <footer class="site-footer">
-  <p>距離は概算値です。1歩＝0.7mで換算しています。記録はサーバー（Googleスプレッドシート・ドライブ）に保存されます。</p>
+  <p>距離は概算値です。1歩＝0.7mで換算しています。記録はサーバー（Googleスプレッドシート・ドライブ）に保存されます。公開にした記録とコメントは、ログインした会員全員が見られます。</p>
 </footer>
 
+<script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="app.js"></script>
 </body>
