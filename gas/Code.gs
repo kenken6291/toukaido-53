@@ -12,6 +12,9 @@
  *   1シート目のタブ名は何でもOK。members / records シートは初回アクセス時に自動生成されます。
  *
  * 【更新履歴】
+ *   - 道中記（現在地・累計距離）の公開/非公開設定（members.progressVisibility）を追加
+ *   - 番付・レースページ用の getRanking を追加（総合／今月／今週）
+ *   - みんなの旅の「○○宿 付近」表示は、道中記を公開している人だけに限定
  *   - 記録ごとの公開/非公開（records.visibility）と、会員同士の励ましコメント（comments シート）に対応
  *     getFeed / addComment / deleteComment を追加
  *   - 写真の表示URLを lh3.googleusercontent.com 形式で返すよう変更（uc?id= 形式は表示されないことがあるため）
@@ -63,7 +66,10 @@ function getMembersSheet_() {
   let sh = ss.getSheetByName('members');
   if (!sh) {
     sh = ss.insertSheet('members');
-    sh.appendRow(['memberId','nickname','email','passwordHash','salt','mustChangePassword','failedAttempts','lockUntil','createdAt']);
+    sh.appendRow(['memberId','nickname','email','passwordHash','salt','mustChangePassword','failedAttempts','lockUntil','createdAt','progressVisibility']);
+  } else if (sh.getRange(1, 10).getValue() !== 'progressVisibility') {
+    // 旧バージョンのシートに列を追加（既存会員は空欄＝非公開扱い）
+    sh.getRange(1, 10).setValue('progressVisibility');
   }
   return sh;
 }
@@ -116,6 +122,8 @@ function doPost(e) {
       case 'getFeed':              return respond_(getFeed_(body));
       case 'addComment':           return respond_(addComment_(body));
       case 'deleteComment':        return respond_(deleteComment_(body));
+      case 'setProgressVisibility':return respond_(setProgressVisibility_(body));
+      case 'getRanking':           return respond_(getRanking_(body));
       default: return respond_({ok:false, error:'unknown_action'});
     }
   } catch (err) {
@@ -364,6 +372,14 @@ function memberNameMap_() {
   return map;
 }
 
+// 会員ID→道中記を公開しているか
+function memberProgressPublicMap_() {
+  const data = getMembersSheet_().getDataRange().getValues();
+  const map = {};
+  for (let i = 1; i < data.length; i++) map[data[i][0]] = normalizeVisibility_(data[i][9]) === 'public';
+  return map;
+}
+
 // recordId→コメント配列（古い順）
 function commentsByRecord_(myId, recordOwnerMap, nameMap, tz) {
   const data = getCommentsSheet_().getDataRange().getValues();
@@ -582,6 +598,7 @@ function getState_(body) {
     cumulativeSteps: cumSteps,
     cumulativeKm: Math.round(cumKm * 100) / 100,
     progress: info,
+    progressVisibility: memberProgressPublicMap_()[memberId] ? 'public' : 'private',
     timeline,
     stations: STATIONS
   };
@@ -626,9 +643,12 @@ function getFeed_(body) {
   items.sort((a, b) => (a.date > b.date ? -1 : a.date < b.date ? 1 : b.createdAt - a.createdAt));
 
   const page = items.slice(offset, offset + FEED_PAGE_SIZE);
+  const progressPublic = memberProgressPublicMap_();
   const comments = commentsByRecord_(memberId, ownerMap, nameMap, tz);
   page.forEach(it => {
-    it.memberStation = stationInfo_(cumByMember[it.ownerId] || 0).currentStation;
+    // 道中記を公開している人（と自分）だけ現在地を出す
+    it.memberStation = (it.isMine || progressPublic[it.ownerId])
+      ? stationInfo_(cumByMember[it.ownerId] || 0).currentStation : '';
     it.comments = comments[it.recordId] || [];
     delete it.ownerId;
   });
@@ -685,4 +705,127 @@ function deleteComment_(body) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ============ 道中記の公開設定 ============
+// body: visibility ('public' | 'private')
+function setProgressVisibility_(body) {
+  const memberId = requireSession_(body.sessionToken);
+  if (!memberId) return {ok:false, error:'session_expired'};
+  const v = normalizeVisibility_(body.visibility);
+  const sh = getMembersSheet_();
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === memberId) {
+      sh.getRange(i + 1, 10).setValue(v);
+      return {ok:true, progressVisibility: v};
+    }
+  }
+  return {ok:false, error:'member_not_found'};
+}
+
+// ============ 番付・レース ============
+// body: period ('total' | 'month' | 'week')
+function getRanking_(body) {
+  const memberId = requireSession_(body.sessionToken);
+  if (!memberId) return {ok:false, error:'session_expired'};
+  const period = ['total','month','week'].indexOf(body.period) >= 0 ? body.period : 'total';
+
+  const tz = getSS_().getSpreadsheetTimeZone() || 'Asia/Tokyo';
+  const now = new Date();
+  const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+  const dow = Number(Utilities.formatDate(now, tz, 'u')); // 1=月曜 … 7=日曜
+  const weekStart = Utilities.formatDate(new Date(now.getTime() - (dow - 1) * 86400000), tz, 'yyyy-MM-dd');
+  const monthStart = today.slice(0, 8) + '01';
+  const from = period === 'week' ? weekStart : period === 'month' ? monthStart : '';
+
+  // 会員情報
+  const memData = getMembersSheet_().getDataRange().getValues();
+  const members = {};
+  for (let i = 1; i < memData.length; i++) {
+    members[memData[i][0]] = {nickname: memData[i][1], isPublic: normalizeVisibility_(memData[i][9]) === 'public'};
+  }
+
+  // 記録を集計
+  const recData = getRecordsSheet_().getDataRange().getValues();
+  const agg = {};
+  for (let i = 1; i < recData.length; i++) {
+    const r = recData[i];
+    if (!r[0] || !members[r[1]]) continue;
+    const date = formatDateCell_(r[2], tz);
+    const a = agg[r[1]] || (agg[r[1]] = {km:0, steps:0, pKm:0, pSteps:0, days:{}, lastDate:''});
+    const km = Number(r[4]) || 0, steps = Number(r[3]) || 0;
+    a.km += km; a.steps += steps;
+    a.days[date] = true;
+    if (date > a.lastDate) a.lastDate = date;
+    if (!from || (date >= from && date <= today)) { a.pKm += km; a.pSteps += steps; }
+  }
+
+  const totalKm = STATIONS[STATIONS.length - 1].km;
+  const rows = Object.keys(agg).map(id => {
+    const a = agg[id];
+    const info = stationInfo_(a.km);
+    return {
+      id,
+      nickname: members[id].nickname,
+      isPublic: members[id].isPublic,
+      isMine: id === memberId,
+      totalKm: Math.round(a.km * 100) / 100,
+      totalSteps: a.steps,
+      periodKm: Math.round(a.pKm * 100) / 100,
+      periodSteps: a.pSteps,
+      station: info.currentStation,
+      nextStation: info.nextStation,
+      passedCount: info.passedCount,
+      isComplete: info.isComplete,
+      pct: Math.min(100, Math.round(a.km / totalKm * 1000) / 10),
+      walkDays: Object.keys(a.days).length,
+      lastDate: a.lastDate
+    };
+  });
+
+  const metric = r => period === 'total' ? r.totalKm : r.periodSteps;
+  const sorter = (x, y) => metric(y) - metric(x) || y.totalKm - x.totalKm;
+
+  // 公開している人だけで順位を付ける（期間ランキングは期間内に歩いた人のみ）
+  let pub = rows.filter(r => r.isPublic && (period === 'total' || r.periodSteps > 0)).sort(sorter);
+  let rank = 0, prev = null;
+  pub.forEach((r, i) => { if (prev === null || metric(r) !== prev) { rank = i + 1; prev = metric(r); } r.rank = rank; });
+
+  // 自分（非公開でも本人には参考順位を返す）
+  let me = rows.find(r => r.isMine) || null;
+  if (me) {
+    if (me.isPublic && me.rank) {
+      // pub 内の自分をそのまま使う
+    } else {
+      const better = pub.filter(r => metric(r) > metric(me)).length;
+      me.rank = (period !== 'total' && me.periodSteps === 0) ? null : better + 1;
+    }
+    // 1つ上の人との差
+    const above = pub.filter(r => !r.isMine && metric(r) > metric(me)).sort((x, y) => metric(x) - metric(y))[0];
+    me.gapToAbove = above ? {nickname: above.nickname, value: Math.round((metric(above) - metric(me)) * 100) / 100} : null;
+  }
+
+  // 全体の合計（公開者のみ）
+  const groupKm = rows.filter(r => r.isPublic).reduce((s, r) => s + r.totalKm, 0);
+  const groupPeriodSteps = pub.reduce((s, r) => s + r.periodSteps, 0);
+
+  const strip = r => { const o = Object.assign({}, r); delete o.id; return o; };
+  return {
+    ok: true,
+    period,
+    periodFrom: from,
+    today,
+    entries: pub.slice(0, 50).map(strip),
+    participants: pub.length,
+    me: me ? strip(me) : null,
+    groupKm: Math.round(groupKm * 10) / 10,
+    groupLaps: Math.round(groupKm / totalKm * 10) / 10,
+    groupReach: groupKm < totalKm ? stationInfo_(groupKm).currentStation : '',
+    groupPeriodSteps,
+    routeKm: totalKm,
+    landmarks: [
+      {name:'箱根', km:98.0}, {name:'浜松', km:254.0}, {name:'宮', km:349.3}, {name:'京', km:totalKm}
+    ]
+  };
 }

@@ -71,7 +71,45 @@ function renderProgress(state) {
 
   document.getElementById('completeMessage').hidden = !p.isComplete;
   document.getElementById('submitRecordBtn').disabled = !!p.isComplete;
+
+  renderProgressVisibility(state.progressVisibility);
 }
+
+// ============ 道中記の公開設定 ============
+function renderProgressVisibility(v) {
+  const isPublic = v === 'public';
+  document.getElementById('progressPublicToggle').checked = isPublic;
+  document.getElementById('progressPublicLabel').textContent =
+    isPublic ? '道中記を番付に公開中' : '道中記は非公開（番付に載りません）';
+}
+
+async function setProgressVisibility(isPublic) {
+  const session = getSession();
+  if (!session) { showAuthScreen(); return null; }
+  const res = await callApi({
+    action: 'setProgressVisibility',
+    sessionToken: session.sessionToken,
+    visibility: isPublic ? 'public' : 'private'
+  });
+  if (!res.ok) { handleSessionError(res); return res; }
+  renderProgressVisibility(res.progressVisibility);
+  return res;
+}
+
+document.getElementById('progressPublicToggle').addEventListener('change', async (e) => {
+  const toggle = e.target;
+  const msg = document.getElementById('progressPublicMessage');
+  toggle.disabled = true;
+  msg.textContent = '設定を保存中…';
+  const res = await setProgressVisibility(toggle.checked);
+  toggle.disabled = false;
+  if (!res || !res.ok) {
+    toggle.checked = !toggle.checked;
+    msg.textContent = res ? errorMessage(res.error) : '';
+    return;
+  }
+  msg.textContent = toggle.checked ? '番付に参加しました。「番付・レース」で順位を見てみましょう。' : '道中記を非公開にしました。';
+});
 
 // ============ コメント欄 ============
 function commentListHtml(comments) {

@@ -87,6 +87,13 @@
 <!-- ==================== メインアプリ ==================== -->
 <main id="appMain" hidden>
 
+  <nav class="page-tabs" aria-label="ページ切り替え">
+    <button type="button" class="page-tab active" data-page="mine">わたしの旅</button>
+    <button type="button" class="page-tab" data-page="ranking">番付・レース</button>
+  </nav>
+
+  <div id="pageMine">
+
   <section class="progress-section">
     <h2>道中記</h2>
     <p class="current-location">現在地 <strong id="currentStation">日本橋</strong> <span id="currentSuffix">出発地</span></p>
@@ -106,6 +113,18 @@
     </div>
 
     <p id="completeMessage" class="complete-message" hidden>祝・京三条大橋 御到着 ── 五十三次 満願成就</p>
+
+    <div class="share-row">
+      <label class="switch">
+        <input type="checkbox" id="progressPublicToggle">
+        <span class="switch-slider"></span>
+      </label>
+      <div class="share-text">
+        <strong id="progressPublicLabel">道中記を番付に公開する</strong>
+        <small>公開すると、現在地・累計距離・歩数が「番付・レース」に表示されます。日々の記録や写真は公開されません。</small>
+      </div>
+    </div>
+    <p id="progressPublicMessage" class="form-message"></p>
   </section>
 
   <section class="post-section">
@@ -146,14 +165,67 @@
     <button type="button" id="feedMoreBtn" class="sub-btn feed-more" hidden>もっと見る</button>
   </section>
 
+  </div><!-- /#pageMine -->
+
+  <!-- ==================== 番付・レース ==================== -->
+  <div id="pageRanking" hidden>
+
+    <section class="rank-hero">
+      <p class="rank-hero-sub">― 歩いて競え、東海道 ―</p>
+      <h2 class="rank-hero-title">東海道 番付</h2>
+      <div class="group-banner">
+        <span class="group-label">みんなで歩いた距離</span>
+        <span class="group-km"><strong id="groupKm">0</strong> km</span>
+        <span class="group-note" id="groupNote">東海道 0 往復分</span>
+      </div>
+    </section>
+
+    <section class="my-rank-card" id="myRankCard" hidden>
+      <div class="my-rank-main">
+        <span class="my-avatar" id="myAvatar">🐢</span>
+        <div>
+          <p class="my-rank-line"><span id="myRankText">--</span></p>
+          <p class="my-title" id="myTitle"></p>
+        </div>
+      </div>
+      <p class="my-gap" id="myGap"></p>
+      <div class="my-private" id="myPrivateNote" hidden>
+        <p>道中記が非公開のため、番付には載っていません（上の順位は参考です）。</p>
+        <button type="button" class="primary-btn" id="quickPublishBtn">番付に参加する（道中記を公開）</button>
+      </div>
+    </section>
+
+    <section class="race-section">
+      <h2>東海道レース <small>（現在地・上位10名）</small></h2>
+      <div class="race-landmarks" id="raceLandmarks"></div>
+      <div id="raceLanes" class="race-lanes"></div>
+      <p id="raceEmpty" class="form-note" hidden>まだ番付に参加している人がいません。一番乗りしませんか？</p>
+    </section>
+
+    <section class="banzuke-section">
+      <h2>番付表</h2>
+      <div class="period-tabs" role="tablist">
+        <button type="button" class="period-tab active" data-period="total">総合（累計km）</button>
+        <button type="button" class="period-tab" data-period="month">今月の歩数</button>
+        <button type="button" class="period-tab" data-period="week">今週の歩数</button>
+      </div>
+      <p class="period-note" id="periodNote"></p>
+      <ol id="banzukeList" class="banzuke-list"></ol>
+      <p id="banzukeEmpty" class="form-note" hidden>この期間はまだ誰も歩いていません。</p>
+      <p id="rankingMessage" class="form-message"></p>
+    </section>
+
+  </div><!-- /#pageRanking -->
+
 </main>
 
 <footer class="site-footer">
-  <p>距離は概算値です。1歩＝0.7mで換算しています。記録はサーバー（Googleスプレッドシート・ドライブ）に保存されます。公開にした記録とコメントは、ログインした会員全員が見られます。</p>
+  <p>距離は概算値です。1歩＝0.7mで換算しています。記録はサーバー（Googleスプレッドシート・ドライブ）に保存されます。公開にした記録とコメント、番付に公開した道中記は、ログインした会員全員が見られます。</p>
 </footer>
 
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="app.js"></script>
+<script src="ranking.js"></script>
 </body>
 </html>

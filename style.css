@@ -222,3 +222,169 @@ h2{
 .f-station{margin-left:auto;font-size:.78rem;color:var(--green);}
 .feed-item.feed-mine{border-color:#e0b0a8;}
 .feed-more{display:block;width:100%;margin-top:14px;}
+
+/* ============================================================
+   ページ切り替えタブ
+   ============================================================ */
+.page-tabs{
+  max-width:520px;margin:16px auto 0;display:flex;gap:6px;padding:0 10px;
+}
+.page-tab{
+  flex:1;padding:10px 6px;font-family:inherit;font-size:.95rem;cursor:pointer;
+  background:var(--paper-dark);color:var(--ink);border:1px solid var(--line);border-radius:8px;
+}
+.page-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:bold;}
+
+/* ---------- 道中記の公開スイッチ ---------- */
+.share-row{
+  display:flex;gap:12px;align-items:flex-start;margin-top:16px;padding:12px;
+  background:var(--paper);border:1px solid var(--line);border-radius:8px;
+}
+.share-text strong{display:block;font-size:.9rem;}
+.share-text small{display:block;font-size:.75rem;color:#665f4d;line-height:1.5;margin-top:2px;}
+.switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;margin-top:2px;}
+.switch input{opacity:0;width:0;height:0;}
+.switch-slider{
+  position:absolute;inset:0;cursor:pointer;background:#cfc4a8;border-radius:26px;transition:background .2s;
+}
+.switch-slider::before{
+  content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;
+  border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+.switch input:checked + .switch-slider{background:var(--green);}
+.switch input:checked + .switch-slider::before{transform:translateX(20px);}
+.switch input:disabled + .switch-slider{opacity:.6;cursor:wait;}
+
+/* ============================================================
+   番付・レース
+   ============================================================ */
+.rank-hero{
+  text-align:center;color:#fff;border:none;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255,255,255,.12) 0 40px, transparent 41px),
+    radial-gradient(circle at 85% 80%, rgba(255,255,255,.10) 0 60px, transparent 61px),
+    linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+}
+.rank-hero-sub{margin:0;font-size:.8rem;letter-spacing:.2em;opacity:.85;}
+.rank-hero-title{
+  border:none;margin:4px 0 12px;padding:0;font-size:1.9rem;letter-spacing:.3em;
+  text-shadow:0 2px 0 rgba(0,0,0,.2);
+}
+.group-banner{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:rgba(255,255,255,.14);border:1px dashed rgba(255,255,255,.5);border-radius:8px;padding:10px;
+}
+.group-label{font-size:.78rem;opacity:.9;}
+.group-km strong{font-size:1.9rem;letter-spacing:.02em;}
+.group-note{font-size:.82rem;}
+
+/* ---------- 自分のカード ---------- */
+.my-rank-card{background:#fffaf0;border:2px solid #e0c060;}
+.my-rank-main{display:flex;align-items:center;gap:14px;}
+.my-avatar{
+  font-size:2.4rem;width:64px;height:64px;display:flex;align-items:center;justify-content:center;
+  background:#fff;border:2px solid #e0c060;border-radius:50%;flex-shrink:0;
+  animation:bob 1.6s ease-in-out infinite;
+}
+.my-rank-line{margin:0;font-size:1rem;}
+.my-rank-line strong{font-size:2rem;color:var(--accent-dark);margin:0 2px;}
+.my-banzuke{
+  display:inline-block;font-size:.85rem;background:var(--accent);color:#fff;
+  padding:1px 10px;border-radius:12px;vertical-align:middle;
+}
+.my-title{margin:2px 0 0;font-size:.82rem;color:#665f4d;}
+.my-gap{margin:12px 0 0;font-size:.92rem;text-align:center;}
+.my-gap:empty{display:none;}
+.my-gap strong{color:var(--accent-dark);}
+.my-private{margin-top:12px;padding-top:10px;border-top:1px dashed #e0c060;}
+.my-private p{font-size:.8rem;color:#665f4d;margin:0 0 8px;}
+
+/* ---------- レース ---------- */
+.race-section h2 small{font-size:.75rem;color:#8a8163;font-weight:normal;}
+.race-landmarks,
+.lane{display:grid;grid-template-columns:6.5em 1fr 3.6em;gap:8px;align-items:center;}
+.lm-track{position:relative;height:1.4em;}
+.lm-label{
+  position:absolute;top:0;transform:translateX(-50%);font-size:.68rem;color:#8a8163;white-space:nowrap;
+}
+.lm-label:first-child{transform:none;}
+.lm-label:last-child{transform:translateX(-100%);color:var(--accent-dark);font-weight:bold;}
+.race-lanes{display:flex;flex-direction:column;gap:8px;}
+.lane{padding:4px 0;}
+.lane-name{display:flex;align-items:center;gap:4px;min-width:0;}
+.lane-rank{
+  flex-shrink:0;width:1.6em;height:1.6em;border-radius:50%;background:var(--paper-dark);
+  font-size:.72rem;display:flex;align-items:center;justify-content:center;font-weight:bold;
+}
+.lane:nth-child(1) .lane-rank{background:#e8c547;color:#fff;}
+.lane:nth-child(2) .lane-rank{background:#b8bcc4;color:#fff;}
+.lane:nth-child(3) .lane-rank{background:#c98b5a;color:#fff;}
+.lane-nick{font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lane-nick small{font-size:.65rem;color:#8a8163;}
+.lane-track{
+  position:relative;height:30px;border-radius:15px;background:
+    repeating-linear-gradient(90deg, transparent 0 10px, rgba(160,140,100,.12) 10px 12px),
+    var(--paper-dark);
+  border:1px solid var(--line);overflow:visible;
+}
+.lm-tick{position:absolute;top:3px;bottom:3px;width:1px;background:rgba(125,44,32,.25);}
+.lane-fill{
+  position:absolute;left:0;top:0;bottom:0;width:0;border-radius:15px;
+  background:linear-gradient(90deg, rgba(74,107,69,.35), rgba(168,60,44,.45));
+  transition:width 1.4s cubic-bezier(.2,.8,.2,1);
+}
+.walker{
+  position:absolute;top:50%;left:0;transform:translate(-50%,-55%);font-size:1.35rem;line-height:1;
+  transition:left 1.4s cubic-bezier(.2,.8,.2,1);
+  animation:bob 1.2s ease-in-out infinite;
+  filter:drop-shadow(0 2px 1px rgba(0,0,0,.2));
+}
+.walker-goal{animation:none;}
+.lane-km{font-size:.9rem;font-weight:bold;color:var(--accent-dark);text-align:right;}
+.lane-km small{font-size:.65rem;font-weight:normal;margin-left:1px;}
+.lane-me .lane-track{border:2px solid var(--accent);box-shadow:0 0 0 3px rgba(168,60,44,.12);}
+.lane-me .lane-nick{font-weight:bold;color:var(--accent-dark);}
+.lane-outside{margin-top:6px;padding-top:10px;border-top:1px dashed var(--line);}
+
+@keyframes bob{
+  0%,100%{margin-top:0;}
+  50%{margin-top:-3px;}
+}
+
+/* ---------- 番付表 ---------- */
+.period-tabs{display:flex;gap:4px;margin-bottom:8px;}
+.period-tab{
+  flex:1;padding:8px 4px;font-family:inherit;font-size:.8rem;cursor:pointer;
+  background:#fff;border:1px solid var(--line);border-radius:6px;color:var(--ink);
+}
+.period-tab.active{background:var(--green);border-color:var(--green);color:#fff;font-weight:bold;}
+.period-note{font-size:.8rem;color:#665f4d;margin:0 0 10px;}
+.banzuke-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;transition:opacity .2s;}
+.banzuke-list.loading{opacity:.4;}
+.bz-item{
+  display:grid;grid-template-columns:5.2em 2.2em 1fr auto;gap:8px;align-items:center;
+  padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);
+}
+.bz-rank{
+  font-size:.78rem;font-weight:bold;text-align:center;color:var(--accent-dark);
+  border-right:1px solid var(--line);padding-right:6px;line-height:1.3;
+}
+.bz-avatar{font-size:1.5rem;text-align:center;}
+.bz-body{min-width:0;}
+.bz-name{margin:0;font-size:.92rem;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bz-sub{margin:0;font-size:.72rem;color:#8a8163;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bz-value{font-size:1.05rem;font-weight:bold;color:var(--accent-dark);white-space:nowrap;}
+.bz-value small{font-size:.7rem;font-weight:normal;margin-left:2px;}
+.bz-top1{background:linear-gradient(90deg,#fff3c4,#fffaf0);border-color:#e0c060;}
+.bz-top1 .bz-rank{font-size:1rem;color:#9a6b00;}
+.bz-top2{background:linear-gradient(90deg,#eef0f3,#fafafa);border-color:#c5c9d0;}
+.bz-top3{background:linear-gradient(90deg,#f7e6d8,#fffaf5);border-color:#d8b090;}
+.bz-top .bz-rank{font-size:.95rem;}
+.bz-me{border:2px solid var(--accent);}
+.bz-extra{margin-top:8px;border-style:dashed;opacity:.85;}
+
+@media (max-width:560px){
+  .race-landmarks, .lane{grid-template-columns:5em 1fr 3.2em;gap:6px;}
+  .bz-item{grid-template-columns:4.4em 2em 1fr auto;gap:6px;padding:8px;}
+  .rank-hero-title{font-size:1.6rem;}
+}
