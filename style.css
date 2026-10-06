@@ -388,3 +388,53 @@ h2{
   .bz-item{grid-template-columns:4.4em 2em 1fr auto;gap:6px;padding:8px;}
   .rank-hero-title{font-size:1.6rem;}
 }
+
+/* ============================================================
+   写真：番付・レース・拡大表示
+   ============================================================ */
+img.zoomable{cursor:zoom-in;}
+
+/* レース：写真の歩く人 */
+.walker-photo{
+  padding:0;border:2px solid #fff;background:#fff;border-radius:50%;cursor:zoom-in;
+  width:34px;height:34px;transform:translate(-50%,-50%);
+  box-shadow:0 2px 6px rgba(0,0,0,.25);font-size:inherit;
+}
+.walker-photo img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;}
+.walker-badge{
+  position:absolute;right:-8px;bottom:-6px;font-size:.85rem;line-height:1;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));
+}
+.lane-me .walker-photo{border-color:var(--accent);}
+.lane{min-height:40px;}
+
+/* 番付表：写真ギャラリー */
+.bz-photos{
+  grid-column:1 / -1;display:flex;gap:6px;overflow-x:auto;padding:4px 0 2px;
+  scrollbar-width:thin;-webkit-overflow-scrolling:touch;
+}
+.bz-photo{
+  flex:0 0 auto;width:72px;height:72px;padding:0;border:1px solid var(--line);
+  border-radius:6px;overflow:hidden;background:var(--paper-dark);cursor:zoom-in;
+}
+.bz-photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s;}
+.bz-photo:hover img{transform:scale(1.06);}
+
+/* 拡大表示 */
+.lightbox{
+  position:fixed;inset:0;z-index:1000;display:none;flex-direction:column;
+  align-items:center;justify-content:center;padding:16px;background:rgba(20,15,10,.88);
+}
+.lightbox.open{display:flex;}
+.lightbox-img{max-width:100%;max-height:80vh;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.5);background:#222;}
+.lightbox-caption{color:#fff;font-size:.9rem;margin:10px 0 0;text-align:center;}
+.lightbox-close{
+  position:absolute;top:12px;right:14px;width:40px;height:40px;border-radius:50%;
+  border:none;background:rgba(255,255,255,.15);color:#fff;font-size:1.6rem;line-height:1;cursor:pointer;
+}
+body.no-scroll{overflow:hidden;}
+
+@media (max-width:560px){
+  .walker-photo{width:30px;height:30px;}
+  .bz-photo{width:64px;height:64px;}
+}

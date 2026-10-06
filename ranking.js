@@ -63,6 +63,22 @@ function formatMD(ymd) {
   return Number(m[1]) + '/' + Number(m[2]) + '（' + '日月火水木金土'.charAt(d.getDay()) + '）';
 }
 
+// 写真のキャプション
+function photoCaption(e, ph) {
+  return e.nickname + ' さん・' + formatDateJa(ph.date) + '・' + Number(ph.steps).toLocaleString() + ' 歩';
+}
+
+// 番付表の写真ギャラリー（公開記録の写真のみサーバーから届く）
+function photoStripHtml(e) {
+  const photos = e.photos || [];
+  if (photos.length === 0) return '';
+  return '<div class="bz-photos">' + photos.map(ph =>
+    '<button type="button" class="bz-photo" data-full="' + escapeHtml(ph.full) + '" data-caption="' + escapeHtml(photoCaption(e, ph)) + '">' +
+      '<img src="' + escapeHtml(ph.thumb) + '" alt="' + escapeHtml(e.nickname) + 'さんの道中の一枚" loading="lazy">' +
+    '</button>'
+  ).join('') + '</div>';
+}
+
 // ============ ページ切り替え ============
 function showPage(name) {
   const isRanking = name === 'ranking';
@@ -212,9 +228,7 @@ function renderRace(data) {
       '</div>' +
       '<div class="lane-track">' + ticks +
         '<div class="lane-fill" data-w="' + e.pct + '"></div>' +
-        '<span class="walker' + (e.isComplete ? ' walker-goal' : '') + '" data-left="' + pos + '" title="' + escapeHtml(e.station) + '">' +
-          (e.isComplete ? '🏯' : avatarFor(e.nickname)) +
-        '</span>' +
+        walkerHtml(e, pos) +
       '</div>' +
       '<div class="lane-km">' + Number(e.totalKm).toFixed(1) + '<small>km</small></div>' +
     '</div>';
@@ -225,6 +239,23 @@ function renderRace(data) {
     lanesEl.querySelectorAll('.lane-fill').forEach(el => { el.style.width = el.dataset.w + '%'; });
     lanesEl.querySelectorAll('.walker').forEach(el => { el.style.left = el.dataset.left + '%'; });
   }));
+}
+
+// レースの歩く人：最新の公開写真があれば丸い写真、なければ動物アイコン
+function walkerHtml(e, pos) {
+  const latest = (e.photos || [])[0];
+  if (e.isComplete) {
+    return '<span class="walker walker-goal" data-left="' + pos + '" title="' + escapeHtml(e.station) + '">🏯</span>';
+  }
+  if (latest) {
+    return '<button type="button" class="walker walker-photo" data-left="' + pos + '"' +
+      ' data-full="' + escapeHtml(latest.full) + '" data-caption="' + escapeHtml(photoCaption(e, latest)) + '"' +
+      ' title="' + escapeHtml(e.nickname + '・' + e.station) + '">' +
+      '<img src="' + escapeHtml(latest.thumb) + '" alt="' + escapeHtml(e.nickname) + 'さんの最新の写真" loading="lazy">' +
+      '<span class="walker-badge">' + avatarFor(e.nickname) + '</span>' +
+    '</button>';
+  }
+  return '<span class="walker" data-left="' + pos + '" title="' + escapeHtml(e.station) + '">' + avatarFor(e.nickname) + '</span>';
 }
 
 // ============ 番付表 ============
@@ -256,6 +287,7 @@ function renderBanzuke(data) {
         '<p class="bz-sub">' + escapeHtml(travelerTitle(e)) + '・' + escapeHtml(e.station) + (extra && !e.isPublic ? '（非公開・参考）' : '') + '</p>' +
       '</div>' +
       '<span class="bz-value">' + v.num + '<small>' + v.unit + '</small></span>' +
+      photoStripHtml(e) +
     '</li>';
   };
 

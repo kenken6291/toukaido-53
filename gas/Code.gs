@@ -12,6 +12,9 @@
  *   1シート目のタブ名は何でもOK。members / records シートは初回アクセス時に自動生成されます。
  *
  * 【更新履歴】
+ *   - 写真はブラウザ側で縮小（長辺1280px・JPEG）してから保存。サーバー側でも3MB超は受け付けない
+ *   - 写真URLを用途別サイズ（=w1200 表示用 / =w240 サムネイル）で返すよう変更
+ *   - 番付・レースに、公開記録の写真（各会員の新しい順に最大6枚）を追加
  *   - 道中記（現在地・累計距離）の公開/非公開設定（members.progressVisibility）を追加
  *   - 番付・レースページ用の getRanking を追加（総合／今月／今週）
  *   - みんなの旅の「○○宿 付近」表示は、道中記を公開している人だけに限定
@@ -34,6 +37,8 @@ const LOCK_MINUTES = 15;              // ロック時間(分)
 const MAX_STEPS = 200000;             // 1記録あたりの歩数上限（入力ミス防止）
 const MAX_COMMENT_LEN = 200;          // コメントの最大文字数
 const FEED_PAGE_SIZE = 20;            // みんなの旅 1回の取得件数
+const MAX_PHOTO_BYTES = 3 * 1024 * 1024; // 写真1枚の上限（ブラウザで縮小済みなら通常 300〜600KB 程度）
+const RANKING_PHOTOS = 6;             // 番付・レースに出す写真の枚数（1人あたり）
 
 // ============ 東海道五十三次 宿場データ（日本橋からの累計距離 km）============
 const STATIONS = [
@@ -328,11 +333,20 @@ function formatDateCell_(v, tz) {
 }
 
 // 写真をDriveに保存して {fileId, url} を返す。失敗時は null
+// 写真データが大きすぎないか（base64文字列から概算）
+function photoTooLarge_(base64) {
+  const len = String(base64 || '').split(',').pop().length;
+  return len * 0.75 > MAX_PHOTO_BYTES;
+}
+
 function savePhoto_(memberId, date, base64, mimeType) {
   try {
     const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
     const bytes = Utilities.base64Decode(String(base64).split(',').pop());
-    const blob = Utilities.newBlob(bytes, mimeType || 'image/jpeg', memberId + '_' + date + '_' + Date.now() + '.jpg');
+    if (bytes.length > MAX_PHOTO_BYTES) return null;
+    const mime = /^image\/(jpeg|png|webp|gif)$/.test(mimeType || '') ? mimeType : 'image/jpeg';
+    const ext = mime === 'image/png' ? '.png' : mime === 'image/webp' ? '.webp' : mime === 'image/gif' ? '.gif' : '.jpg';
+    const blob = Utilities.newBlob(bytes, mime, memberId + '_' + date + '_' + Date.now() + ext);
     const file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     return {fileId: file.getId(), url: 'https://drive.google.com/uc?id=' + file.getId()};
@@ -355,13 +369,19 @@ function trashPhoto_(driveFileId, photoUrl) {
 function normalizeVisibility_(v) { return v === 'public' ? 'public' : 'private'; }
 
 // 写真の表示用URL（ファイルIDがあれば lh3 形式に変換）
-function photoDisplayUrl_(driveFileId, photoUrl) {
+function photoIdOf_(driveFileId, photoUrl) {
   let id = String(driveFileId || '');
   if (!id && photoUrl) {
     const m = String(photoUrl).match(/[?&]id=([^&]+)/);
     if (m) id = m[1];
   }
-  return id ? 'https://lh3.googleusercontent.com/d/' + id : String(photoUrl || '');
+  return id;
+}
+// width: 表示幅(px)。lh3 の =wNNN 指定で、Drive側で縮小された画像が配信される
+function photoDisplayUrl_(driveFileId, photoUrl, width) {
+  const id = photoIdOf_(driveFileId, photoUrl);
+  if (!id) return String(photoUrl || '');
+  return 'https://lh3.googleusercontent.com/d/' + id + '=w' + (width || 1200);
 }
 
 // 会員ID→ニックネームの対応表
@@ -430,6 +450,8 @@ function submitRecord_(body) {
   if (!date) return {ok:false, error:'invalid_date'};
   const distanceKm = stepsToKm_(steps);
 
+  if (body.photoBase64 && photoTooLarge_(body.photoBase64)) return {ok:false, error:'photo_too_large'};
+
   let driveFileId = '', photoUrl = '';
   if (body.photoBase64) {
     const saved = savePhoto_(memberId, date, body.photoBase64, body.photoMimeType);
@@ -468,6 +490,7 @@ function updateRecord_(body) {
   if (!steps) return {ok:false, error:'invalid_steps'};
   const date = validateDate_(body.date);
   if (!date) return {ok:false, error:'invalid_date'};
+  if (body.photoBase64 && photoTooLarge_(body.photoBase64)) return {ok:false, error:'photo_too_large'};
 
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return {ok:false, error:'busy'};
@@ -753,7 +776,18 @@ function getRanking_(body) {
     const r = recData[i];
     if (!r[0] || !members[r[1]]) continue;
     const date = formatDateCell_(r[2], tz);
-    const a = agg[r[1]] || (agg[r[1]] = {km:0, steps:0, pKm:0, pSteps:0, days:{}, lastDate:''});
+    const a = agg[r[1]] || (agg[r[1]] = {km:0, steps:0, pKm:0, pSteps:0, days:{}, lastDate:'', photos:[]});
+    // 公開指定の記録の写真だけを集める
+    const pid = photoIdOf_(r[5], r[6]);
+    if (pid && normalizeVisibility_(r[9]) === 'public') {
+      a.photos.push({
+        thumb: photoDisplayUrl_(r[5], r[6], 240),
+        full: photoDisplayUrl_(r[5], r[6], 1200),
+        date: date,
+        steps: Number(r[3]) || 0,
+        ts: r[8] instanceof Date ? r[8].getTime() : 0
+      });
+    }
     const km = Number(r[4]) || 0, steps = Number(r[3]) || 0;
     a.km += km; a.steps += steps;
     a.days[date] = true;
@@ -780,7 +814,11 @@ function getRanking_(body) {
       isComplete: info.isComplete,
       pct: Math.min(100, Math.round(a.km / totalKm * 1000) / 10),
       walkDays: Object.keys(a.days).length,
-      lastDate: a.lastDate
+      lastDate: a.lastDate,
+      photos: a.photos
+        .sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : y.ts - x.ts))
+        .slice(0, RANKING_PHOTOS)
+        .map(ph => ({thumb: ph.thumb, full: ph.full, date: ph.date, steps: ph.steps}))
     };
   });
 

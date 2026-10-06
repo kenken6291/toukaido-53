@@ -5,6 +5,7 @@ let selectedPhotoMimeType = null;
 let currentTimeline = [];
 let feedItems = [];
 let feedNextOffset = 0;
+let photoProcessing = false;
 
 // 追加機能用のエラーメッセージ
 Object.assign(ERROR_MESSAGES, {
@@ -16,7 +17,118 @@ Object.assign(ERROR_MESSAGES, {
   busy: '混み合っています。少し待ってから再度お試しください。',
   comment_empty: 'コメントを入力してください。',
   comment_too_long: 'コメントは200文字以内で入力してください。',
-  comment_not_found: 'コメントが見つかりません。画面を更新してください。'
+  comment_not_found: 'コメントが見つかりません。画面を更新してください。',
+  photo_too_large: '写真のサイズが大きすぎます。別の写真でお試しください。'
+});
+
+// ============ 写真の縮小（アップロード前にブラウザで実行） ============
+const PHOTO_MAX_EDGE = 1280;          // 長辺の最大ピクセル
+const PHOTO_TARGET_BYTES = 600 * 1024; // これを超えたら画質を下げて再圧縮
+const PHOTO_QUALITY_STEPS = [0.82, 0.72, 0.62, 0.5];
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image_load_failed')); };
+    img.src = url;
+  });
+}
+
+function dataUrlBytes(dataUrl) {
+  const b64 = String(dataUrl).split(',').pop();
+  return Math.floor(b64.length * 0.75);
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+function formatBytes(n) {
+  return n >= 1024 * 1024 ? (n / 1024 / 1024).toFixed(1) + 'MB' : Math.round(n / 1024) + 'KB';
+}
+
+// 長辺1280pxのJPEGに縮小して {base64, mime, bytes, originalBytes} を返す
+// （スマホ写真の向きは最近のブラウザが自動で補正して描画します）
+async function resizeImageFile(file) {
+  let img;
+  try {
+    img = await loadImageFromFile(file);
+  } catch (err) {
+    // ブラウザが読めない形式は、そのまま送る（サーバー側で3MB上限チェック）
+    const raw = await readFileAsDataUrl(file);
+    return {base64: raw, mime: file.type || 'image/jpeg', bytes: dataUrlBytes(raw), originalBytes: file.size, resized: false};
+  }
+
+  const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';            // 透過PNGの背景を白に
+  ctx.fillRect(0, 0, w, h);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, w, h);
+
+  let dataUrl = '';
+  for (const q of PHOTO_QUALITY_STEPS) {
+    dataUrl = canvas.toDataURL('image/jpeg', q);
+    if (dataUrlBytes(dataUrl) <= PHOTO_TARGET_BYTES) break;
+  }
+  return {base64: dataUrl, mime: 'image/jpeg', bytes: dataUrlBytes(dataUrl), originalBytes: file.size, resized: true};
+}
+
+function photoSizeNote(r) {
+  return r.resized
+    ? '写真を ' + formatBytes(r.originalBytes) + ' → ' + formatBytes(r.bytes) + ' に縮小しました。'
+    : '';
+}
+
+// ============ 写真の拡大表示（ライトボックス） ============
+function openLightbox(src, caption) {
+  let box = document.getElementById('lightbox');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'lightbox';
+    box.className = 'lightbox';
+    box.innerHTML =
+      '<button type="button" class="lightbox-close" aria-label="閉じる">×</button>' +
+      '<img class="lightbox-img" alt="">' +
+      '<p class="lightbox-caption"></p>';
+    box.addEventListener('click', (e) => {
+      if (e.target === box || e.target.classList.contains('lightbox-close')) closeLightbox();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+    document.body.appendChild(box);
+  }
+  box.querySelector('.lightbox-img').src = src;
+  box.querySelector('.lightbox-caption').textContent = caption || '';
+  box.classList.add('open');
+  document.body.classList.add('no-scroll');
+}
+
+function closeLightbox() {
+  const box = document.getElementById('lightbox');
+  if (!box) return;
+  box.classList.remove('open');
+  box.querySelector('.lightbox-img').src = '';
+  document.body.classList.remove('no-scroll');
+}
+
+// data-full を持つ画像（またはボタン）をタップしたら拡大
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-full]');
+  if (!el) return;
+  e.preventDefault();
+  openLightbox(el.dataset.full, el.dataset.caption || '');
 });
 
 // ============ 共通 ============
@@ -242,7 +354,7 @@ function renderViewItem(item, rec) {
       '</div>' +
     '</div>' +
     '<div class="t-meta">' + Number(rec.steps).toLocaleString() + ' 歩（約 ' + Number(rec.distanceKm).toFixed(2) + ' km）</div>' +
-    (rec.photoUrl ? '<img src="' + escapeHtml(rec.photoUrl) + '" alt="道中の一枚" loading="lazy">' : '') +
+    (rec.photoUrl ? '<img class="zoomable" src="' + escapeHtml(rec.photoUrl) + '" data-full="' + escapeHtml(rec.photoUrl) + '" data-caption="' + escapeHtml(formatDateJa(rec.date)) + '" alt="道中の一枚" loading="lazy">' : '') +
     (rec.comment ? '<p class="t-comment">' + escapeHtml(rec.comment) + '</p>' : '') +
     '<p class="form-message t-msg"></p>' +
     commentBlockHtml(rec);
@@ -279,21 +391,29 @@ function renderEditItem(item, rec) {
   item.querySelector('.e-visibility').value = rec.visibility === 'public' ? 'public' : 'private';
   item._editPhoto = {base64: null, mime: null};
 
-  item.querySelector('.e-photo').addEventListener('change', (e) => {
+  item.querySelector('.e-photo').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     const preview = item.querySelector('.e-preview');
+    const msg = item.querySelector('.t-msg');
+    const saveBtn = item.querySelector('button[data-action="save"]');
     if (!file) {
       item._editPhoto = {base64: null, mime: null};
       preview.hidden = true;
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      item._editPhoto = {base64: reader.result, mime: file.type};
-      preview.src = reader.result;
+    saveBtn.disabled = true;
+    msg.textContent = '写真を縮小しています…';
+    try {
+      const r = await resizeImageFile(file);
+      item._editPhoto = {base64: r.base64, mime: r.mime};
+      preview.src = r.base64;
       preview.hidden = false;
-    };
-    reader.readAsDataURL(file);
+      msg.textContent = photoSizeNote(r);
+    } catch (err) {
+      item._editPhoto = {base64: null, mime: null};
+      msg.textContent = '写真を読み込めませんでした。別の写真でお試しください。';
+    }
+    saveBtn.disabled = false;
   });
 }
 
@@ -418,7 +538,7 @@ function buildFeedItem(it) {
     '</div>' +
     '<div class="t-date">' + escapeHtml(formatDateJa(it.date)) + '</div>' +
     '<div class="t-meta">' + Number(it.steps).toLocaleString() + ' 歩（約 ' + Number(it.distanceKm).toFixed(2) + ' km）</div>' +
-    (it.photoUrl ? '<img src="' + escapeHtml(it.photoUrl) + '" alt="道中の一枚" loading="lazy">' : '') +
+    (it.photoUrl ? '<img class="zoomable" src="' + escapeHtml(it.photoUrl) + '" data-full="' + escapeHtml(it.photoUrl) + '" data-caption="' + escapeHtml(it.nickname + ' さん・' + formatDateJa(it.date)) + '" alt="道中の一枚" loading="lazy">' : '') +
     (it.comment ? '<p class="t-comment">' + escapeHtml(it.comment) + '</p>' : '') +
     commentBlockHtml(it);
   return item;
@@ -433,19 +553,30 @@ document.getElementById('feedList').addEventListener('click', async (e) => {
 document.getElementById('feedMoreBtn').addEventListener('click', () => loadFeed(false));
 
 // ============ 写真選択 ============
-document.getElementById('photoInput').addEventListener('change', (e) => {
+document.getElementById('photoInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  selectedPhotoMimeType = file.type;
-  const reader = new FileReader();
-  reader.onload = () => {
-    selectedPhotoBase64 = reader.result;
+  const msg = document.getElementById('recordMessage');
+  const btn = document.getElementById('submitRecordBtn');
+  photoProcessing = true;
+  btn.disabled = true;
+  msg.textContent = '写真を縮小しています…';
+  try {
+    const r = await resizeImageFile(file);
+    selectedPhotoBase64 = r.base64;
+    selectedPhotoMimeType = r.mime;
     const preview = document.getElementById('photoPreview');
     preview.src = selectedPhotoBase64;
     preview.hidden = false;
     document.getElementById('removePhotoBtn').hidden = false;
-  };
-  reader.readAsDataURL(file);
+    msg.textContent = photoSizeNote(r);
+  } catch (err) {
+    selectedPhotoBase64 = null;
+    selectedPhotoMimeType = null;
+    msg.textContent = '写真を読み込めませんでした。別の写真でお試しください。';
+  }
+  photoProcessing = false;
+  btn.disabled = document.getElementById('completeMessage').hidden === false;
 });
 
 document.getElementById('removePhotoBtn').addEventListener('click', () => {
@@ -468,6 +599,7 @@ document.getElementById('recordForm').addEventListener('submit', async (e) => {
   const date = document.getElementById('dateInput').value;
   const visEl = document.querySelector('input[name="visibility"]:checked');
   const visibility = visEl ? visEl.value : 'public';
+  if (photoProcessing) { msg.textContent = '写真の縮小が終わるまでお待ちください。'; return; }
 
   btn.disabled = true;
   msg.textContent = '投稿中…（写真がある場合は少し時間がかかります）';
